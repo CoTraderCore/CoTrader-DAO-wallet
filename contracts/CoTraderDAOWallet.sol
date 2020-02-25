@@ -19,20 +19,53 @@ contract COTDAOVote is Ownable{
     ERC20 public COT;
     address[] public voiters;
     mapping(address => address) public mappingVote;
+    ERC20 constant private ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
+    address zeroAddress = adress(0x0000000000000000000000000000000000000000);
 
-    function burn(uint256 amount) private {
-      COT.transfer(adress(0x0000000000000000000000000000000000000000));
+    constructor(address _COT)public{
+      COT = ERC20(_COT);
     }
 
-    function stake(uint256 amount) private {
+    function _burn(ERC20 _token, uint256 _amount) private {
+      uint256 cotAmount = convertTokenToCOT(_token, _amount);
+      COT.transfer(zeroAddress, cotAmount);
+    }
+
+    function _stake(ERC20 _token, uint256 amount) private {
       // TODO send tokens to stake reserve
     }
 
+    function _withdraw(ERC20 _token, uint256 _amount) private {
+      if(_token == ETH_TOKEN_ADDRESS){
+        return address(owner).transfer(_amount);
+      }else{
+        return _token.transfer(owner, _amount);
+      }
+    }
+
     function withdraw(ERC20[] tokens) onlyOwner {
-      // TODO
-      // 1/3 to owner address
-      // 1/3 burn
-      // 1/3 stake
+      for(uint i = 0; i < tokens.length; i++){
+         uint256 curentTokenTotalBalance = getTokenBalance(tokens[i]);
+         // get a third of the balance
+         uint256 thirdOfBalance = curentTokenTotalBalance.div(3);
+         // do actions if cur balance can be div by 3
+         if(thirdOfBalance > 0){
+           // 1/3 to owner address
+           _withdraw(tokens[i], thirdOfBalance);
+           // 1/3 burn
+           _stake(tokens[i], thirdOfBalance);
+           // 1/3 stake
+           _burn(tokens[i], thirdOfBalance);
+         }
+      }
+    }
+
+    function getTokenBalance(ERC20 _token) public view returns(uint256){
+      if(_toke == ETH_TOKEN_ADDRESS){
+        return address(this).balance;
+      }else{
+        return ERC20.balanceOf(address(this));
+      }
     }
 
     function convertTokenToCOT(address _token, uint256 _amount)
