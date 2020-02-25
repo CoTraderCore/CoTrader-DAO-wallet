@@ -9,7 +9,7 @@
 */
 
 pragma solidity ^0.4.24;
-
+import "./interfaces/IStake.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -20,10 +20,12 @@ contract COTDAOVote is Ownable{
     address[] public voiters;
     mapping(address => address) public mappingVote;
     ERC20 constant private ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-    address zeroAddress = adress(0x0000000000000000000000000000000000000000);
+    address zeroAddress = address(0x0000000000000000000000000000000000000000);
+    IStake public stake;
 
-    constructor(address _COT)public{
+    constructor(address _COT, address _stake) public {
       COT = ERC20(_COT);
+      stake = IStake(_stake);
     }
 
     function _burn(ERC20 _token, uint256 _amount) private {
@@ -31,19 +33,21 @@ contract COTDAOVote is Ownable{
       COT.transfer(zeroAddress, cotAmount);
     }
 
-    function _stake(ERC20 _token, uint256 amount) private {
-      // TODO send tokens to stake reserve
+    function _stake(ERC20 _token, uint256 _amount) private {
+      uint256 cotAmount = convertTokenToCOT(_token, _amount);
+      COT.approve(address(stake), cotAmount);
+      stake.addReserve(cotAmount);
     }
 
     function _withdraw(ERC20 _token, uint256 _amount) private {
       if(_token == ETH_TOKEN_ADDRESS){
-        return address(owner).transfer(_amount);
+        address(owner).transfer(_amount);
       }else{
-        return _token.transfer(owner, _amount);
+        _token.transfer(owner, _amount);
       }
     }
 
-    function withdraw(ERC20[] tokens) onlyOwner {
+    function withdraw(ERC20[] tokens) {
       for(uint i = 0; i < tokens.length; i++){
          uint256 curentTokenTotalBalance = getTokenBalance(tokens[i]);
          // get a third of the balance
@@ -61,10 +65,10 @@ contract COTDAOVote is Ownable{
     }
 
     function getTokenBalance(ERC20 _token) public view returns(uint256){
-      if(_toke == ETH_TOKEN_ADDRESS){
+      if(_token == ETH_TOKEN_ADDRESS){
         return address(this).balance;
       }else{
-        return ERC20.balanceOf(address(this));
+        return _token.balanceOf(address(this));
       }
     }
 
@@ -102,7 +106,7 @@ contract COTDAOVote is Ownable{
     // return total supply - burned balance
     function calculateCOTSupply() public view returns(uint256){
       uint256 supply = COT.totalSupply();
-      uint256 burned = COT.balanceOf(adress(0x0000000000000000000000000000000000000000));
+      uint256 burned = COT.balanceOf(zeroAddress);
       return supply.sub(burned);
     }
 
