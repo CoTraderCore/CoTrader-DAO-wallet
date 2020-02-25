@@ -1,5 +1,11 @@
-/*
-This contract close tokens for stake and return tokens + rewarding after certain time
+/**
+* This contract get 10% from CoTrader managers profit and then distributes assets
+*
+* 1/3 to owner of this contract (CoTrtader team)
+* 1/3 convert to COT and burn
+* 1/3 convert to COT and send to stake reserve
+*
+* NOTE: 51% CoTrader token holders can change owner of this contract
 */
 
 pragma solidity ^0.4.24;
