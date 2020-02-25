@@ -1,6 +1,13 @@
 # status
 ```
-Not finished 
+Not finished
+```
+
+# note
+
+```
+Change zeroAddress after unit tests
+unit test fails with address 0x0000000000000000000000000000000000000000
 ```
 
 # description
