@@ -109,15 +109,15 @@ contract COTDAOVote is Ownable{
     // calculate all vote subscribers
     // return balance of COT for all voters of current candidate
     function calculateVoters(address _candidate)public view returns(uint256){
-        uint256 count;
-        for(uint i = 0; i<voiters.length; i++){
-            // take into account current vote balance
-            // if this vote compare with current candidate
-            if(_candidate == mappingVote[voiters[i]]){
-                count = count.add(COT.balanceOf(voiters[i]));
-            }
-        }
-        return count;
+      uint256 count;
+      for(uint i = 0; i<voiters.length; i++){
+          // take into account current vote balance
+          // if this vote compare with current candidate
+          if(_candidate == mappingVote[voiters[i]]){
+              count = count.add(COT.balanceOf(voiters[i]));
+          }
+      }
+      return count;
     }
 
     function changeOwner(address _newOwner) public {
