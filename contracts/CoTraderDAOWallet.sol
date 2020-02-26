@@ -10,6 +10,7 @@
 
 pragma solidity ^0.4.24;
 import "./interfaces/IStake.sol";
+import "./interfaces/IConvertPortal.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -18,6 +19,7 @@ contract CoTraderDAOWallet is Ownable{
   using SafeMath for uint256;
   ERC20 public COT;
   address[] public voters;
+  IConvertPortal public convertPortal;
   mapping(address => address) public candidatesMap;
   ERC20 constant private ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
@@ -25,9 +27,10 @@ contract CoTraderDAOWallet is Ownable{
 
   IStake public stake;
 
-  constructor(address _COT, address _stake) public {
+  constructor(address _COT, address _stake, address _convertPortal) public {
     COT = ERC20(_COT);
     stake = IStake(_stake);
+    convertPortal = IConvertPortal()
   }
 
   function _burn(ERC20 _token, uint256 _amount) private {
@@ -51,18 +54,25 @@ contract CoTraderDAOWallet is Ownable{
 
   function withdraw(ERC20[] tokens) {
    for(uint i = 0; i < tokens.length; i++){
+     // get current token balance
      uint256 curentTokenTotalBalance = getTokenBalance(tokens[i]);
-     // get a third of the balance
-     uint256 thirdOfBalance = curentTokenTotalBalance.div(3);
-     // do actions if cur balance can be div by 3
-     if(thirdOfBalance > 0){
-       // 1/3 to owner address
-       _withdraw(tokens[i], thirdOfBalance);
-       // 1/3 burn
-       _stake(tokens[i], thirdOfBalance);
-       // 1/3 stake
-       _burn(tokens[i], thirdOfBalance);
-     }
+     // check if current token can be converted to COT or ETH
+     bool isConvertibleToCOT = convertPortal.isConvertibleToCOT(tokens[i], curentTokenTotalBalance);
+     bool isConvertibleToETH = convertPortal.isConvertibleToETH(tokens[i], curentTokenTotalBalance);
+     // continue if current token can be converted to COT or ETH
+     if(isConvertibleToCOT || isConvertibleToETH){
+        // get a third of the balance
+        uint256 thirdOfBalance = curentTokenTotalBalance.div(3);
+        // continue if cur balance can be div by 3
+        if(thirdOfBalance > 0){
+          // 1/3 to owner address
+          _withdraw(tokens[i], thirdOfBalance);
+          // 1/3 burn
+          _stake(tokens[i], thirdOfBalance);
+          // 1/3 stake
+          _burn(tokens[i], thirdOfBalance);
+        }
+      }
     }
   }
 
@@ -92,6 +102,13 @@ contract CoTraderDAOWallet is Ownable{
   // step 3 if can't check convert via kyber
   // if can't via kyber return 0
   return _amount;
+  }
+
+  function changeConvertPortal(address _newConvertPortal)
+  public
+  onlyOwner
+  {
+    convertPortal = IConvertPortal(_newConvertPortal);
   }
 
 

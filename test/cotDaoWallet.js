@@ -133,5 +133,6 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
 
     // TODO
     // 1 withdraw ether (convert to cot)
+    // 1 withdraw few erc 
   })
 })

@@ -36,10 +36,18 @@ contract ConvertPortal {
   }
 
   // check
-  function isCanBeConvertedToCOT(address _token, uint256 _amount)
+  function isConvertibleToCOT(address _token, uint256 _amount)
   public
   view
-  returns(uint256)
+  returns(bool)
+  {
+
+  }
+
+  function isConvertibleToETH(address _token, uint256 _amount)
+  public
+  view
+  returns(bool)
   {
 
   }
