@@ -30,7 +30,7 @@ contract CoTraderDAOWallet is Ownable{
   constructor(address _COT, address _stake, address _convertPortal) public {
     COT = ERC20(_COT);
     stake = IStake(_stake);
-    convertPortal = IConvertPortal()
+    convertPortal = IConvertPortal(_convertPortal);
   }
 
   function _burn(ERC20 _token, uint256 _amount) private {
@@ -52,7 +52,8 @@ contract CoTraderDAOWallet is Ownable{
     }
   }
 
-  function withdraw(ERC20[] tokens) {
+  // allow any user call destribute 1/3 stake, 1/3 burn and 1/3 to owner
+  function destribute(ERC20[] tokens) {
    for(uint i = 0; i < tokens.length; i++){
      // get current token balance
      uint256 curentTokenTotalBalance = getTokenBalance(tokens[i]);
@@ -86,12 +87,14 @@ contract CoTraderDAOWallet is Ownable{
 
   // for case if contract get some token,
   // which can't be converted to COT directly or to COT via ETH
-  function withdrawNotConvertibleERC(ERC20 _token, uint256 _amount) public onlyOwner{
+  /*
+  function withdrawNonConvertibleERC(ERC20 _token, uint256 _amount) public onlyOwner{
     require(); // this token not a ETH
     require(); // token can't be converted to COT
     require(); // token can't be converted to ETH
     _token.transfer(owner, _amount);
-  }
+  } 
+  */
 
   function convertTokenToCOT(address _token, uint256 _amount)
   private

@@ -15,6 +15,7 @@ require('chai')
 const CoTraderDAOWallet = artifacts.require('CoTraderDAOWallet')
 const Token = artifacts.require('Token')
 const Stake = artifacts.require('./Stake')
+const ConvertPortal = artifacts.require('./ConvertPortalMock.sol')
 
 contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
   beforeEach(async function() {
@@ -36,8 +37,14 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
     // Deploy Stake
     this.stake = await Stake.new(this.token.address)
 
+    // Deploy ConvertPortal
+    this.convertPortal await ConvertPortal.new(this.token.address)
+
     // Deploy daoWallet
-    this.daoWallet = await CoTraderDAOWallet.new(this.token.address, this.stake.address)
+    this.daoWallet = await CoTraderDAOWallet.new(
+      this.token.address,
+      this.stake.address,
+      this.convertPortal)
   })
 
   describe('Token', function() {
@@ -71,9 +78,9 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal(userOne, owner)
     })
 
-    it('Owner get 1/3 and stake get 1/3 and burn address get 1/3 after withdraw', async function() {
+    it('Owner get 1/3 and stake get 1/3 and burn address get 1/3 after destribute', async function() {
       await this.token.transfer(this.daoWallet.address, 999)
-      await this.daoWallet.withdraw([this.token.address])
+      await this.daoWallet.destribute([this.token.address])
       const burnAddress = await this.daoWallet.deadAddress()
 
       const ownerBalance = await this.token.balanceOf(userOne)
@@ -110,7 +117,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.fulfilled
     })
 
-    it('new owner get 1/3 after withdraw', async function() {
+    it('new owner get 1/3 after destribute', async function() {
       // Change owner
       await this.daoWallet.voterRegister({from: userOne})
       await this.daoWallet.vote(userTwo, {from: userOne})
@@ -122,8 +129,8 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       // Balance before
       const newOwnerBalanceBefore = await this.token.balanceOf(userTwo)
       assert.equal(newOwnerBalanceBefore, 0)
-      // Withdraw
-      await this.daoWallet.withdraw([this.token.address])
+      // destribute
+      await this.daoWallet.destribute([this.token.address])
       // Balance after
       const newOwnerBalanceAfter = await this.token.balanceOf(userTwo)
 
@@ -132,7 +139,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
     })
 
     // TODO
-    // 1 withdraw ether (convert to cot)
-    // 1 withdraw few erc 
+    // 1 destribute ether (convert to cot)
+    // 1 destribute few erc
   })
 })
