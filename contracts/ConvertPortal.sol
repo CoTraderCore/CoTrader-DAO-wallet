@@ -4,13 +4,14 @@ import "./interfaces/IGetBancorAddressFromRegistry.sol";
 import "./interfaces/BancorNetworkInterface.sol";
 import "./interfaces/PathFinderInterface.sol";
 import "./interfaces/KyberNetworkInterface.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+
 
 contract ConvertPortal {
   address public BancorEtherToken;
   IGetBancorAddressFromRegistry public bancorRegistry;
   KyberNetworkInterface public kyber;
-
-  enum ExchangeType { Paraswap, Bancor }
+  address public cotToken;
 
   /**
   * @dev contructor
@@ -18,112 +19,94 @@ contract ConvertPortal {
   * @param _bancorRegistryWrapper  address of Bancor Registry Wrapper
   * @param _BancorEtherToken       address of Bancor ETH wrapper
   * @param _kyber                  address of KyberNetwork
+  * @param _cotToken                    address of CoTrader erc20
   */
   constructor(
     address _bancorRegistryWrapper,
     address _BancorEtherToken,
-    address _kyber
+    address _kyber,
+    address _cotToken
     )
     public
   {
     bancorRegistry = IGetBancorAddressFromRegistry(_bancorRegistryWrapper);
     BancorEtherToken = _BancorEtherToken;
     kyber = KyberNetworkInterface(_kyber);
+    cotToken = _cotToken;
+  }
+
+  // check
+  function isCanBeConvertedToCOT(address _token, uint256 _amount)
+  public
+  view
+  returns(uint256)
+  {
+
   }
 
   // convert ERC to COT via Bancor network
   // return COT amount
-  function convertERCtoCOT(address _token, uint256 amount)
+  function convertTokentoCOT(address _token, uint256 _amount)
   public
-  returns (uint256)
+  returns (uint256 cotAmount)
   {
+    // get COT
+    cotAmount = _tradeBancor(
+        _token,
+        _cotToken,
+        _amount
+    );
+    // send COT back to sender
+    ERC20(cotToken).transfer(msg.sender, cotAmount);
+    // After the trade, any amount of input token will be sent back to msg.sender
+    uint256 endAmount = (_token == ETH_TOKEN_ADDRESS)
+    ? address(this).balance
+    : ERC20(_token).balanceOf(address(this));
 
+    // Check if we hold a positive amount of _source
+    if (endAmount > 0) {
+      if (_token == ETH_TOKEN_ADDRESS) {
+        (msg.sender).transfer(endAmount);
+      } else {
+        ERC20(_token).transfer(msg.sender, endAmount);
+      }
+    }
   }
 
   // convert ERC to ETH and then ETH to COT
   // for case if input token not in Bancor network
   // return COT amount
-  function convertERCtoCOTviaETH(address _token, uint256 amount)
-  public 
-  returns (uint256)
+  function convertTokentoCOTviaETH(address _token, uint256 _amount)
+  public
+  returns (uint256 cotAmount)
   {
+    // convert token to ETH via kyber
+    uint256 receivedETH = _tradeKyber(
+        _token,
+        ETH_TOKEN_ADDRESS,
+        _amount
+    );
 
+    // convert ETH to COT via bancor
+    cotAmount = _tradeBancor(
+        ETH_TOKEN_ADDRESS,
+        _cotToken,
+        receivedETH
+    );
+
+    // send COT back to sender
+    ERC20(cotToken).transfer(msg.sender, cotAmount);
+
+    // check if there are remains some amount of token and eth, then send back to sender
+    uint256 endAmountOfERC = ERC20(_token).balanceOf(address(this));
+    uint256 endAmountOfETH = address(this).balance;
+
+    if(endAmountOfETH > 0)
+      (msg.sender).transfer(endAmount);
+    if(endAmountOfERC > 0)
+      ERC20(_token).transfer(msg.sender, endAmount);
   }
 
-  /**
-  * @dev Facilitates a trade for a SmartFund
-  *
-  * @param _source            ERC20 token to convert from
-  * @param _sourceAmount      Amount to convert from (in _source token)
-  * @param _destination       ERC20 token to convert to
-  * @param _type              The type of exchange to trade with
-  *
-  * @return The amount of _destination received from the trade
-  */
-  function trade(
-    ERC20 _source,
-    uint256 _sourceAmount,
-    ERC20 _destination,
-    uint256 _type
-  )
-    external
-    payable
-    returns (uint256)
-  {
-
-    require(_source != _destination);
-
-    uint256 receivedAmount;
-
-    if (_source == ETH_TOKEN_ADDRESS) {
-      require(msg.value == _sourceAmount);
-    } else {
-      require(msg.value == 0);
-    }
-
-    if (_type == uint(ExchangeType.Kyber)) {
-      receivedAmount = _tradeKyber(
-        _source,
-        _sourceAmount,
-        _destination
-      );
-    }
-    else if (_type == uint(ExchangeType.Bancor)){
-      receivedAmount = _tradeBancor(
-          _source,
-          _destination,
-          _sourceAmount
-      );
-    }
-    else {
-      // unknown exchange type
-      revert();
-    }
-
-    // Check if Ether was received
-    if (_destination == ETH_TOKEN_ADDRESS) {
-      (msg.sender).transfer(receivedAmount);
-    } else {
-      // transfer tokens received to sender
-      _destination.transfer(msg.sender, receivedAmount);
-    }
-
-    // After the trade, any _source that exchangePortal holds will be sent back to msg.sender
-    uint256 endAmount = (_source == ETH_TOKEN_ADDRESS) ? this.balance : _source.balanceOf(this);
-
-    // Check if we hold a positive amount of _source
-    if (endAmount > 0) {
-      if (_source == ETH_TOKEN_ADDRESS) {
-        (msg.sender).transfer(endAmount);
-      } else {
-        _source.transfer(msg.sender, endAmount);
-      }
-    }
-
-    emit Trade(msg.sender, _source, _sourceAmount, _destination, receivedAmount, uint8(_type));
-
-    return receivedAmount;
-  }
 
  // Facilitates trade with Bancor
  function _tradeKyber(
@@ -204,12 +187,5 @@ contract ConvertPortal {
       _transferFromSenderAndApproveTo(ERC20(sourceToken), sourceAmount, address(bancorNetwork));
       returnAmount = bancorNetwork.claimAndConvert(pathInERC20, sourceAmount, 1);
     }
- }
-
-
- function tokenBalance(ERC20 _token) private view returns (uint256) {
-   if (_token == ETH_TOKEN_ADDRESS)
-     return address(this).balance;
-   return _token.balanceOf(address(this));
  }
 }

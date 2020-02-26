@@ -74,20 +74,25 @@ contract CoTraderDAOWallet is Ownable{
     }
   }
 
+  // for case if contract get some token,
+  // which can't be converted to COT directly or to COT via ETH
+  function withdrawNotConvertibleERC(ERC20 _token, uint256 _amount) public onlyOwner{
+    require(); // this token not a ETH
+    require(); // token can't be converted to COT
+    require(); // token can't be converted to ETH
+    _token.transfer(owner, _amount);
+  }
+
   function convertTokenToCOT(address _token, uint256 _amount)
   private
   returns(uint256 cotAmount){
   // TODO convert token to COT via Bancor
+  // step 1 check via convert portal if this token can be converted to COT
+  // step 2 if can, convert
+  // step 3 if can't check convert via kyber
+  // if can't via kyber return 0
   return _amount;
   }
-
-  function convertTokenToETH(address _token, uint256 _amount)
-  private
-  returns(uint256 ethAmount){
-  // TODO convert token to ETH for case if token can't be converted to COT
-  return _amount;
-  }
-
 
 
   /*
