@@ -21,10 +21,7 @@ contract CoTraderDAOWallet is Ownable{
   mapping(address => address) public candidatesMap;
   ERC20 constant private ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
-  /* NOTE */
-  // UNCOMMENT THIS AFTER UNIT TEST
-  // address zeroAddress = address(0x0000000000000000000000000000000000000000);
-  address public zeroAddress = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
+  address public deadAddress = address(0x000000000000000000000000000000000000dEaD);
 
   IStake public stake;
 
@@ -35,7 +32,7 @@ contract CoTraderDAOWallet is Ownable{
 
   function _burn(ERC20 _token, uint256 _amount) private {
     uint256 cotAmount = convertTokenToCOT(_token, _amount);
-    COT.transfer(zeroAddress, cotAmount);
+    COT.transfer(deadAddress, cotAmount);
   }
 
   function _stake(ERC20 _token, uint256 _amount) private {
@@ -91,10 +88,12 @@ contract CoTraderDAOWallet is Ownable{
   return _amount;
   }
 
+
+
   /*
   ** VOTE LOGIC
   *
-  *  users can change owner if total balance of COT for all users more then 50%
+  *  users can change owner if total balance of COT for all users more than 50%
   *  of total supply COT
   */
 
@@ -111,7 +110,7 @@ contract CoTraderDAOWallet is Ownable{
   // return half of (total supply - burned balance)
   function calculateCOTSupply() public view returns(uint256){
     uint256 supply = COT.totalSupply();
-    uint256 burned = COT.balanceOf(zeroAddress);
+    uint256 burned = COT.balanceOf(deadAddress);
     return supply.sub(burned).div(2);
   }
 
