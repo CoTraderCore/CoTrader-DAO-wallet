@@ -1,6 +1,14 @@
 pragma solidity ^0.4.24;
 
-contract ExchangePortal {
+import "./interfaces/IGetBancorAddressFromRegistry.sol";
+import "./interfaces/BancorNetworkInterface.sol";
+import "./interfaces/PathFinderInterface.sol";
+import "./interfaces/KyberNetworkInterface.sol";
+
+contract ConvertPortal {
+  address public BancorEtherToken;
+  IGetBancorAddressFromRegistry public bancorRegistry;
+  KyberNetworkInterface public kyber;
 
   enum ExchangeType { Paraswap, Bancor }
 
@@ -9,16 +17,37 @@ contract ExchangePortal {
   *
   * @param _bancorRegistryWrapper  address of Bancor Registry Wrapper
   * @param _BancorEtherToken       address of Bancor ETH wrapper
+  * @param _kyber                  address of KyberNetwork
   */
   constructor(
     address _bancorRegistryWrapper,
     address _BancorEtherToken,
+    address _kyber
     )
     public
-    {
-
+  {
     bancorRegistry = IGetBancorAddressFromRegistry(_bancorRegistryWrapper);
     BancorEtherToken = _BancorEtherToken;
+    kyber = KyberNetworkInterface(_kyber);
+  }
+
+  // convert ERC to COT via Bancor network
+  // return COT amount
+  function convertERCtoCOT(address _token, uint256 amount)
+  public
+  returns (uint256)
+  {
+
+  }
+
+  // convert ERC to ETH and then ETH to COT
+  // for case if input token not in Bancor network
+  // return COT amount
+  function convertERCtoCOTviaETH(address _token, uint256 amount)
+  public 
+  returns (uint256)
+  {
+
   }
 
   /**
@@ -39,7 +68,6 @@ contract ExchangePortal {
   )
     external
     payable
-    tokenEnabled(_destination)
     returns (uint256)
   {
 
