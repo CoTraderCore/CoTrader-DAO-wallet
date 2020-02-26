@@ -17,8 +17,8 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract CoTraderDAOWallet is Ownable{
   using SafeMath for uint256;
   ERC20 public COT;
-  address[] public voiters;
-  mapping(address => address) public mappingVote;
+  address[] public voters;
+  mapping(address => address) public candidatesMap;
   ERC20 constant private ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
   /* NOTE */
@@ -98,42 +98,42 @@ contract CoTraderDAOWallet is Ownable{
   *  of total supply COT
   */
 
-  // subscribe wallet for a vote
-  function subscribeForVote()public{
-    voiters.push(msg.sender);
+  // register a new wallet for a vote
+  function voterRegister() public {
+    voters.push(msg.sender);
   }
 
   // vote for a certain candidate
-  function vote(address _candidate)public{
-    mappingVote[msg.sender] = _candidate;
+  function vote(address _candidate) public {
+    candidatesMap[msg.sender] = _candidate;
   }
 
-  // return total supply - burned balance
+  // return half of (total supply - burned balance)
   function calculateCOTSupply() public view returns(uint256){
     uint256 supply = COT.totalSupply();
     uint256 burned = COT.balanceOf(zeroAddress);
-    return supply.sub(burned);
+    return supply.sub(burned).div(2);
   }
 
   // calculate all vote subscribers
   // return balance of COT for all voters of current candidate
   function calculateVoters(address _candidate)public view returns(uint256){
     uint256 count;
-    for(uint i = 0; i<voiters.length; i++){
+    for(uint i = 0; i<voters.length; i++){
       // take into account current vote balance
       // if this vote compare with current candidate
-      if(_candidate == mappingVote[voiters[i]]){
-          count = count.add(COT.balanceOf(voiters[i]));
+      if(_candidate == candidatesMap[voters[i]]){
+          count = count.add(COT.balanceOf(voters[i]));
       }
     }
     return count;
   }
 
   function changeOwner(address _newOwner) public {
-    uint256 totalVoiters = calculateVoters(_newOwner);
+    uint256 totalVoters = calculateVoters(_newOwner);
     uint256 totalCOT = calculateCOTSupply();
-    // require 51%
-    require(totalVoiters > totalCOT);
+    // require 51% COT on voters balance
+    require(totalVoters > totalCOT);
     super._transferOwnership(_newOwner);
   }
 

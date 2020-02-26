@@ -16,7 +16,7 @@ const CoTraderDAOWallet = artifacts.require('CoTraderDAOWallet')
 const Token = artifacts.require('Token')
 const Stake = artifacts.require('./Stake')
 
-contract('CoTraderDAOWallet', function([userOne, userTwo]) {
+contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
   beforeEach(async function() {
     // Tokens config
     this.name = "TEST"
@@ -86,7 +86,46 @@ contract('CoTraderDAOWallet', function([userOne, userTwo]) {
     })
 
     // Vote
-    // Burn
-    // Change owner
+    it('User can not change owner if there are no 51%', async function() {
+      await this.daoWallet.changeOwner(userTwo).should.be.rejectedWith(EVMRevert)
+    })
+
+    it('User can not change owner if vote, but then transfer balance', async function() {
+      await this.daoWallet.voterRegister({from: userOne})
+      await this.daoWallet.vote(userTwo, {from: userOne})
+      const userOneBalance = await this.token.balanceOf(userOne)
+      await this.token.transfer(userTwo, userOneBalance)
+      await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.rejectedWith(EVMRevert)
+    })
+
+    it('User can change owner if there are 51% voters', async function() {
+      await this.daoWallet.voterRegister({from: userOne})
+      await this.daoWallet.vote(userTwo, {from: userOne})
+      await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.fulfilled
+    })
+
+    it('new owner get 1/3 after withdraw', async function() {
+      // Change owner
+      await this.daoWallet.voterRegister({from: userOne})
+      await this.daoWallet.vote(userTwo, {from: userOne})
+      await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.fulfilled
+      const newOwner = await this.daoWallet.owner()
+      assert.equal(newOwner, userTwo)
+      // Transfer assets
+      await this.token.transfer(this.daoWallet.address, 999)
+      // Balance before
+      const newOwnerBalanceBefore = await this.token.balanceOf(userTwo)
+      assert.equal(newOwnerBalanceBefore, 0)
+      // Withdraw
+      await this.daoWallet.withdraw([this.token.address])
+      // Balance after
+      const newOwnerBalanceAfter = await this.token.balanceOf(userTwo)
+
+      assert.equal(newOwnerBalanceAfter, 333)
+      assert.isTrue(newOwnerBalanceAfter > newOwnerBalanceBefore)
+    })
+
+    // TODO
+    // 1 withdraw ether (convert to cot) 
   })
 })
