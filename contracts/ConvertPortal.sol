@@ -4,6 +4,7 @@ import "./interfaces/IGetBancorAddressFromRegistry.sol";
 import "./interfaces/BancorNetworkInterface.sol";
 import "./interfaces/PathFinderInterface.sol";
 import "./interfaces/KyberNetworkInterface.sol";
+import "./interfaces/IGetRatioForBancorAssets.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 
@@ -11,7 +12,9 @@ contract ConvertPortal {
   address public BancorEtherToken;
   IGetBancorAddressFromRegistry public bancorRegistry;
   KyberNetworkInterface public kyber;
+  IGetRatioForBancorAssets public bancorRatio;
   address public cotToken;
+  address constant private ETH_TOKEN_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
   /**
   * @dev contructor
@@ -19,13 +22,15 @@ contract ConvertPortal {
   * @param _bancorRegistryWrapper  address of Bancor Registry Wrapper
   * @param _BancorEtherToken       address of Bancor ETH wrapper
   * @param _kyber                  address of KyberNetwork
-  * @param _cotToken                    address of CoTrader erc20
+  * @param _cotToken               address of CoTrader erc20
+  * @param _bancorRatio            address of Bancor ratio contract
   */
   constructor(
     address _bancorRegistryWrapper,
     address _BancorEtherToken,
     address _kyber,
-    address _cotToken
+    address _cotToken,
+    address _bancorRatio
     )
     public
   {
@@ -33,23 +38,28 @@ contract ConvertPortal {
     BancorEtherToken = _BancorEtherToken;
     kyber = KyberNetworkInterface(_kyber);
     cotToken = _cotToken;
+    bancorRatio = IGetRatioForBancorAssets(_bancorRatio);
   }
 
-  // check
+  // check if token can be converted to COT in Bancor Network
   function isConvertibleToCOT(address _token, uint256 _amount)
   public
   view
-  returns(bool)
+  returns(bool success)
   {
-
+    (success) = address(bancorRatio).call(
+    abi.encodeWithSelector(bancorRatio.getRatio.selector, _token, cotToken, _amount));
   }
 
+  // check if token can be converted to ETH in Kyber Network
+  // can be added more DEX
   function isConvertibleToETH(address _token, uint256 _amount)
   public
   view
-  returns(bool)
+  returns(bool success)
   {
-
+    (success) = address(kyber).call(
+    abi.encodeWithSelector(kyber.getExpectedRate.selector, _token, ETH_TOKEN_ADDRESS, _amount));
   }
 
   // convert ERC to COT via Bancor network
@@ -61,7 +71,7 @@ contract ConvertPortal {
     // get COT
     cotAmount = _tradeBancor(
         _token,
-        _cotToken,
+        cotToken,
         _amount
     );
     // send COT back to sender
@@ -90,15 +100,15 @@ contract ConvertPortal {
   {
     // convert token to ETH via kyber
     uint256 receivedETH = _tradeKyber(
-        _token,
-        ETH_TOKEN_ADDRESS,
-        _amount
+        ERC20(_token),
+        _amount,
+        ERC20(ETH_TOKEN_ADDRESS)
     );
 
     // convert ETH to COT via bancor
     cotAmount = _tradeBancor(
         ETH_TOKEN_ADDRESS,
-        _cotToken,
+        cotToken,
         receivedETH
     );
 
@@ -106,13 +116,13 @@ contract ConvertPortal {
     ERC20(cotToken).transfer(msg.sender, cotAmount);
 
     // check if there are remains some amount of token and eth, then send back to sender
-    uint256 endAmountOfERC = ERC20(_token).balanceOf(address(this));
     uint256 endAmountOfETH = address(this).balance;
+    uint256 endAmountOfERC = ERC20(_token).balanceOf(address(this));
 
     if(endAmountOfETH > 0)
-      (msg.sender).transfer(endAmount);
+      (msg.sender).transfer(endAmountOfETH);
     if(endAmountOfERC > 0)
-      ERC20(_token).transfer(msg.sender, endAmount);
+      ERC20(_token).transfer(msg.sender, endAmountOfERC);
   }
 
 
@@ -196,4 +206,17 @@ contract ConvertPortal {
       returnAmount = bancorNetwork.claimAndConvert(pathInERC20, sourceAmount, 1);
     }
  }
+
+ /**
+  * @dev Transfers tokens to this contract and approves them to another address
+  *
+  * @param _source          Token to transfer and approve
+  * @param _sourceAmount    The amount to transfer and approve (in _source token)
+  * @param _to              Address to approve to
+  */
+  function _transferFromSenderAndApproveTo(ERC20 _source, uint256 _sourceAmount, address _to) private {
+    require(_source.transferFrom(msg.sender, address(this), _sourceAmount));
+
+    _source.approve(_to, _sourceAmount);
+  }
 }
