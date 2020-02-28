@@ -15,28 +15,34 @@ contract ConvertPortalMock {
   function isConvertibleToCOT(address _token, uint256 _amount)
   public
   view
-  returns(bool success)
+  returns(uint256)
   {
-    return true;
+    return _amount * cotRatio;
   }
 
 
   function isConvertibleToETH(address _token, uint256 _amount)
   public
   view
-  returns(bool success)
+  returns(uint256)
   {
-    return true;
+    return _amount * cotRatio;
   }
 
   // convert ERC to COT via Bancor network
   // return COT amount
   function convertTokentoCOT(address _token, uint256 _amount)
   public
+  payable
   returns (uint256 cotAmount)
   {
+     if(_token == ETH_TOKEN_ADDRESS){
+       require(msg.value == _amount);
+     }else{
+       ERC20(_token).transferFrom(msg.sender, address(this), _amount);
+     }
+
      cotAmount = _amount * cotRatio;
-     ERC20(_token).transferFrom(msg.sender, address(this), _amount);
      ERC20(cotToken).transfer(msg.sender, cotAmount);
   }
 

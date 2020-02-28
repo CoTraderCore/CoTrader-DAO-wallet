@@ -89,16 +89,22 @@ contract ConvertPortal {
   // return COT amount
   function convertTokentoCOT(address _token, uint256 _amount)
   public
+  payable
   returns (uint256 cotAmount)
   {
+    if(_token == ETH_TOKEN_ADDRESS)
+      require(msg.value == _amount, "require ETH");
+
     // get COT
     cotAmount = _tradeBancor(
         _token,
         cotToken,
         _amount
     );
+
     // send COT back to sender
     ERC20(cotToken).transfer(msg.sender, cotAmount);
+
     // After the trade, any amount of input token will be sent back to msg.sender
     uint256 endAmount = (_token == ETH_TOKEN_ADDRESS)
     ? address(this).balance
@@ -242,4 +248,7 @@ contract ConvertPortal {
 
     _source.approve(_to, _sourceAmount);
   }
+
+  // fallback payable function to receive ether from other contract addresses
+  function() public payable {}
 }

@@ -9,7 +9,7 @@ const BigNumber = BN
 
 require('chai')
   .use(require('chai-as-promised'))
-  .use(require('chai-bignumber')(BigNumber))
+  // .use(require('chai-bignumber')(BigNumber))
   .should()
 
 const CoTraderDAOWallet = artifacts.require('CoTraderDAOWallet')
@@ -19,12 +19,13 @@ const ConvertPortal = artifacts.require('./ConvertPortalMock.sol')
 
 contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
   beforeEach(async function() {
+    this.ETH_TOKEN_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
     // Tokens config
     this.name = "TEST"
     this.symbol = "TST"
 
     this.decimals = 18
-    this.totalSupply = 1000000
+    this.totalSupply = 5000000
 
     // Deploy Token
     this.token = await Token.new(
@@ -39,6 +40,9 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
 
     // Deploy ConvertPortal
     this.convertPortal = await ConvertPortal.new(this.token.address)
+
+    // Send some amount of COT to convertPortalMock
+    await this.token.transfer(this.convertPortal.address, 1000000)
 
     // Deploy daoWallet
     this.daoWallet = await CoTraderDAOWallet.new(
@@ -78,18 +82,47 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal(userOne, owner)
     })
 
-    it('Owner get 1/3 and stake get 1/3 and burn address get 1/3 after destribute', async function() {
+    it('Owner get 1/3 COT and stake get 1/3 COT and burn address get 1/3 COT after destribute', async function() {
       await this.token.transfer(this.daoWallet.address, 999)
+      // balance before destribute
+      const ownerBalanceBefore = await this.token.balanceOf(userOne)
       await this.daoWallet.destribute([this.token.address])
-      const burnAddress = await this.daoWallet.deadAddress()
+      // balance after destribute
+      const ownerBalanceAfter = await this.token.balanceOf(userOne)
 
-      const ownerBalance = await this.token.balanceOf(userOne)
+      const burnAddress = await this.daoWallet.deadAddress()
       const stakeBalance = await this.token.balanceOf(this.stake.address)
       const burnBalance = await this.token.balanceOf(burnAddress)
 
-      assert.equal(ownerBalance, 999334)
+      const ownerEarn = ownerBalanceAfter - ownerBalanceBefore
+
+      assert.equal(ownerEarn, 333)
       assert.equal(stakeBalance, 333)
       assert.equal(burnBalance, 333)
+    })
+
+    it('Owner get 1/3 ETH and stake get 1/3 ETH and burn address get 1/3 ETH after destribute', async function() {
+      // send ETH to DAO wallet
+      await this.daoWallet.sendTransaction({
+        value: 3,
+        from: userOne
+      });
+      const balance = await web3.eth.getBalance(this.daoWallet.address);
+      assert.equal(balance, 3)
+      await this.daoWallet.destribute([this.ETH_TOKEN_ADDRESS])
+      //const burnAddress = await this.daoWallet.deadAddress()
+
+      // const ownerBalance = await this.token.balanceOf(userOne)
+      // const stakeBalance = await this.token.balanceOf(this.stake.address)
+      // const burnBalance = await this.token.balanceOf(burnAddress)
+      //
+      // assert.equal(ownerBalance, 999334)
+      // assert.equal(stakeBalance, 333)
+      // assert.equal(burnBalance, 333)
+    })
+
+    it('TODO Owner get 1/3 some another ERC and stake get 1/3 ERC and burn address get 1/3 ERC after destribute', async function() {
+      await this.daoWallet.destribute([this.token.address]).should.be.rejectedWith(EVMRevert)
     })
 
     // Vote
@@ -143,9 +176,5 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal(newOwnerBalanceAfter, 333)
       assert.isTrue(newOwnerBalanceAfter > newOwnerBalanceBefore)
     })
-
-    // TODO
-    // 1 destribute ether (convert to cot)
-    // 1 destribute few erc
   })
 })

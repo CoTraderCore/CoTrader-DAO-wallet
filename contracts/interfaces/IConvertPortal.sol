@@ -11,6 +11,7 @@ contract IConvertPortal {
 
   function convertTokentoCOT(address _token, uint256 _amount)
   public
+  payable
   returns (uint256 cotAmount);
 
   function convertTokentoCOTviaETH(address _token, uint256 _amount)

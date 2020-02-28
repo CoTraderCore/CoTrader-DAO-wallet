@@ -92,9 +92,11 @@ contract CoTraderDAOWallet is Ownable{
   function withdrawNonConvertibleERC(ERC20 _token, uint256 _amount) public onlyOwner{
     uint256 cotReturnAmount = convertPortal.isConvertibleToCOT(_token, _amount);
     uint256 ethReturnAmount = convertPortal.isConvertibleToETH(_token, _amount);
+
     require(_token != ETH_TOKEN_ADDRESS, "token con not be a ETH");
     require(cotReturnAmount == 0, "token can not be converted to COT");
     require(ethReturnAmount == 0, "token can not be converted to ETH");
+
     _token.transfer(owner, _amount);
   }
 
@@ -106,12 +108,19 @@ contract CoTraderDAOWallet is Ownable{
     // try convert current token to COT
     uint256 cotReturnAmount = convertPortal.isConvertibleToCOT(_token, _amount);
     if(cotReturnAmount > 0) {
-      cotAmount = convertPortal.convertTokentoCOT(_token, _amount);
+      if(ERC20(_token) == ETH_TOKEN_ADDRESS){
+        cotAmount = convertPortal.convertTokentoCOT.value(_amount)(_token, _amount);
+      }
+      else{
+        ERC20(_token).approve(address(convertPortal), _amount);
+        cotAmount = convertPortal.convertTokentoCOT(_token, _amount);
+      }
     }
     // try convert current token to COT via ETH
     else {
       uint256 ethReturnAmount = convertPortal.isConvertibleToETH(_token, _amount);
       if(ethReturnAmount > 0) {
+        ERC20(_token).approve(address(convertPortal), _amount);
         cotAmount = convertPortal.convertTokentoCOTviaETH(_token, _amount);
       }
       // there are no way convert token to COT
@@ -175,4 +184,6 @@ contract CoTraderDAOWallet is Ownable{
     super._transferOwnership(_newOwner);
   }
 
+  // fallback payable function to receive ether from other contract addresses
+  function() public payable {}
 }
