@@ -7,9 +7,23 @@ contract ConvertPortalMock {
   address public cotToken;
   uint cotRatio = 3;
 
+  // For Mock
+  bool allowConvertToCOT = true;
+  bool allowConvertToETH = true;
+
 
   constructor(address _cotToken) public {
     cotToken = _cotToken;
+  }
+
+  // For Mock
+  function disallowConvertToCOT()public{
+    allowConvertToCOT = false;
+  }
+
+  // For Mock 
+  function disallowConvertToETH()public{
+    allowConvertToETH = false;
   }
 
   function isConvertibleToCOT(address _token, uint256 _amount)
@@ -17,7 +31,7 @@ contract ConvertPortalMock {
   view
   returns(uint256)
   {
-    return _amount * cotRatio;
+    return (allowConvertToCOT) ? _amount * cotRatio : 0;
   }
 
 
@@ -26,7 +40,7 @@ contract ConvertPortalMock {
   view
   returns(uint256)
   {
-    return _amount * cotRatio;
+    return (allowConvertToETH) ? _amount * cotRatio : 0;
   }
 
   // convert ERC to COT via Bancor network

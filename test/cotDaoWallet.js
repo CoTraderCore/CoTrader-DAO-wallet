@@ -9,7 +9,7 @@ const BigNumber = BN
 
 require('chai')
   .use(require('chai-as-promised'))
-  // .use(require('chai-bignumber')(BigNumber))
+  .use(require('chai-bignumber')(BigNumber))
   .should()
 
 const CoTraderDAOWallet = artifacts.require('CoTraderDAOWallet')
@@ -194,6 +194,32 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
 
       assert.equal(newOwnerBalanceAfter, 333)
       assert.isTrue(newOwnerBalanceAfter > newOwnerBalanceBefore)
+    })
+
+    it('Owner can not call withdrawNonConvertibleERC if this ERC convertible', async function() {
+      await this.testToken.transfer(this.daoWallet.address, 999)
+      await this.daoWallet.withdrawNonConvertibleERC(this.testToken.address, 999)
+      .should.be.rejectedWith(EVMRevert)
+    })
+
+    it('Owner can call withdrawNonConvertibleERC and get this ERC if this ERC non convertible', async function() {
+      await this.convertPortal.disallowConvertToCOT()
+      await this.convertPortal.disallowConvertToETH()
+      // transfer ALL TST tokens to DAO wallet
+      await this.testToken.transfer(this.daoWallet.address, 5000000)
+      // get back tokens
+      await this.daoWallet.withdrawNonConvertibleERC(this.testToken.address, 5000000)
+      .should.be.fulfilled
+      const ownerBalance = await this.testToken.balanceOf(userOne)
+      assert.equal(ownerBalance, 5000000)
+    })
+
+    it('Not owner can NOT call withdrawNonConvertibleERC and get this ERC if this ERC non convertible', async function() {
+      await this.convertPortal.disallowConvertToCOT()
+      await this.convertPortal.disallowConvertToETH()
+      await this.testToken.transfer(this.daoWallet.address, 999)
+      await this.daoWallet.withdrawNonConvertibleERC(this.testToken.address, 999, {from: userTwo})
+      .should.be.rejectedWith(EVMRevert)
     })
   })
 })
