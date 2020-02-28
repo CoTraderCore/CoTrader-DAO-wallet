@@ -38,13 +38,13 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
     this.stake = await Stake.new(this.token.address)
 
     // Deploy ConvertPortal
-    this.convertPortal await ConvertPortal.new(this.token.address)
+    this.convertPortal = await ConvertPortal.new(this.token.address)
 
     // Deploy daoWallet
     this.daoWallet = await CoTraderDAOWallet.new(
       this.token.address,
       this.stake.address,
-      this.convertPortal)
+      this.convertPortal.address)
   })
 
   describe('Token', function() {
@@ -93,7 +93,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
     })
 
     // Vote
-    it('User can not change owner if there are no 51%', async function() {
+    it('User can not change owner if there are no 51% COT supply', async function() {
       await this.daoWallet.changeOwner(userTwo).should.be.rejectedWith(EVMRevert)
     })
 
@@ -105,13 +105,19 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.rejectedWith(EVMRevert)
     })
 
-    it('User can not change owner if there are only 50% voters', async function() {
+    it('User can not change owner if there are only 50% COT supply', async function() {
+      // transfer 50% tokens
+      const totalSupply = await this.token.totalSupply()
+      const halfSupply = totalSupply / 2
+      await this.token.transfer(userThree, halfSupply)
+
+      // vote from userThree with 50% balance
       await this.daoWallet.voterRegister({from: userThree})
       await this.daoWallet.vote(userTwo, {from: userThree})
-      await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.fulfilled
+      await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.rejectedWith(EVMRevert)
     })
 
-    it('User can change owner if there are 51% voters', async function() {
+    it('User can change owner if there are 51% COT supply', async function() {
       await this.daoWallet.voterRegister({from: userOne})
       await this.daoWallet.vote(userTwo, {from: userOne})
       await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.fulfilled
