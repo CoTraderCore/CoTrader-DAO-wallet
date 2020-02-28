@@ -45,10 +45,17 @@ contract ConvertPortal {
   function isConvertibleToCOT(address _token, uint256 _amount)
   public
   view
-  returns(bool success)
+  returns(uint256)
   {
-    (success) = address(bancorRatio).call(
+    // check if can get ratio
+    (bool success) = address(bancorRatio).call(
     abi.encodeWithSelector(bancorRatio.getRatio.selector, _token, cotToken, _amount));
+    // get ratio from DEX with COT
+    if(success){
+      return bancorRatio.getRatio(_token, cotToken, _amount);
+    }else{
+      return 0;
+    }
   }
 
   // check if token can be converted to ETH in Kyber Network
@@ -56,10 +63,26 @@ contract ConvertPortal {
   function isConvertibleToETH(address _token, uint256 _amount)
   public
   view
-  returns(bool success)
+  returns(uint256)
   {
-    (success) = address(kyber).call(
-    abi.encodeWithSelector(kyber.getExpectedRate.selector, _token, ETH_TOKEN_ADDRESS, _amount));
+    // check if can get ratio
+    (bool success) = address(kyber).call(
+    abi.encodeWithSelector(
+      kyber.getExpectedRate.selector,
+      ERC20(_token),
+      ERC20(ETH_TOKEN_ADDRESS),
+       _amount));
+
+    // get ratio
+    if(success){
+     (uint256 expectedRate, ) = kyber.getExpectedRate(
+      ERC20(_token),
+      ERC20(ETH_TOKEN_ADDRESS),
+      _amount);
+      return expectedRate;
+    }else{
+      return 0;
+    }
   }
 
   // convert ERC to COT via Bancor network

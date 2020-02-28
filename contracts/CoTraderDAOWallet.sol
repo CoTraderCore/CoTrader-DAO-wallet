@@ -34,14 +34,22 @@ contract CoTraderDAOWallet is Ownable{
   }
 
   function _burn(ERC20 _token, uint256 _amount) private {
-    uint256 cotAmount = convertTokenToCOT(_token, _amount);
-    COT.transfer(deadAddress, cotAmount);
+    uint256 cotAmount = (_token == COT)
+    ? _amount
+    : convertTokenToCOT(_token, _amount);
+    if(cotAmount > 0)
+      COT.transfer(deadAddress, cotAmount);
   }
 
   function _stake(ERC20 _token, uint256 _amount) private {
-    uint256 cotAmount = convertTokenToCOT(_token, _amount);
-    COT.approve(address(stake), cotAmount);
-    stake.addReserve(cotAmount);
+    uint256 cotAmount = (_token == COT)
+    ? _amount
+    : convertTokenToCOT(_token, _amount);
+
+    if(cotAmount > 0){
+      COT.approve(address(stake), cotAmount);
+      stake.addReserve(cotAmount);
+    }
   }
 
   function _withdraw(ERC20 _token, uint256 _amount) private {
@@ -57,22 +65,16 @@ contract CoTraderDAOWallet is Ownable{
    for(uint i = 0; i < tokens.length; i++){
      // get current token balance
      uint256 curentTokenTotalBalance = getTokenBalance(tokens[i]);
-     // check if current token can be converted to COT or ETH
-     bool isConvertibleToCOT = convertPortal.isConvertibleToCOT(tokens[i], curentTokenTotalBalance);
-     bool isConvertibleToETH = convertPortal.isConvertibleToETH(tokens[i], curentTokenTotalBalance);
-     // continue if current token can be converted to COT or ETH
-     if(isConvertibleToCOT || isConvertibleToETH){
-        // get a third of the balance
-        uint256 thirdOfBalance = curentTokenTotalBalance.div(3);
-        // continue if cur balance can be div by 3
-        if(thirdOfBalance > 0){
-          // 1/3 to owner address
-          _withdraw(tokens[i], thirdOfBalance);
-          // 1/3 burn
-          _stake(tokens[i], thirdOfBalance);
-          // 1/3 stake
-          _burn(tokens[i], thirdOfBalance);
-        }
+     // get a third of the balance
+     uint256 thirdOfBalance = curentTokenTotalBalance.div(3);
+     // continue if cur balance can be div by 3
+     if(thirdOfBalance > 0){
+        // 1/3 to owner address
+        _withdraw(tokens[i], thirdOfBalance);
+        // 1/3 burn
+        _stake(tokens[i], thirdOfBalance);
+        // 1/3 stake
+        _burn(tokens[i], thirdOfBalance);
       }
     }
   }
@@ -87,24 +89,36 @@ contract CoTraderDAOWallet is Ownable{
 
   // for case if contract get some token,
   // which can't be converted to COT directly or to COT via ETH
-  /*
   function withdrawNonConvertibleERC(ERC20 _token, uint256 _amount) public onlyOwner{
-    require(); // this token not a ETH
-    require(); // token can't be converted to COT
-    require(); // token can't be converted to ETH
+    uint256 cotReturnAmount = convertPortal.isConvertibleToCOT(_token, _amount);
+    uint256 ethReturnAmount = convertPortal.isConvertibleToETH(_token, _amount);
+    require(_token != ETH_TOKEN_ADDRESS, "token con not be a ETH");
+    require(cotReturnAmount == 0, "token can not be converted to COT");
+    require(ethReturnAmount == 0, "token can not be converted to ETH");
     _token.transfer(owner, _amount);
-  } 
-  */
+  }
 
+  // convert token to COT
   function convertTokenToCOT(address _token, uint256 _amount)
   private
-  returns(uint256 cotAmount){
-  // TODO convert token to COT via Bancor
-  // step 1 check via convert portal if this token can be converted to COT
-  // step 2 if can, convert
-  // step 3 if can't check convert via kyber
-  // if can't via kyber return 0
-  return _amount;
+  returns(uint256 cotAmount)
+  {
+    // try convert current token to COT
+    uint256 cotReturnAmount = convertPortal.isConvertibleToCOT(_token, _amount);
+    if(cotReturnAmount > 0) {
+      cotAmount = convertPortal.convertTokentoCOT(_token, _amount);
+    }
+    // try convert current token to COT via ETH
+    else {
+      uint256 ethReturnAmount = convertPortal.isConvertibleToETH(_token, _amount);
+      if(ethReturnAmount > 0) {
+        cotAmount = convertPortal.convertTokentoCOTviaETH(_token, _amount);
+      }
+      // there are no way convert token to COT
+      else{
+        cotAmount = 0;
+      }
+    }
   }
 
   function changeConvertPortal(address _newConvertPortal)
