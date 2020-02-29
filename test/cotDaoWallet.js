@@ -120,9 +120,11 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
         value: 3,
         from: userOne
       });
-      const balance = await web3.eth.getBalance(this.daoWallet.address);
+      let balance = await web3.eth.getBalance(this.daoWallet.address);
       assert.equal(balance, 3)
       await this.daoWallet.destribute([this.ETH_TOKEN_ADDRESS])
+      balance = await web3.eth.getBalance(this.daoWallet.address)
+      assert.equal(balance, 0)
     })
 
     it('Owner get 1/3 TST and stake get 1/3 COT from TST and burn address get 1/3 COT from TST after destribute', async function() {
@@ -142,6 +144,68 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal(ownerEarn, 333)
       assert.equal(stakeBalance, 333 * 3) // 1 TST = 3 COT
       assert.equal(burnBalance, 333 * 3) // 1 TST = 3 COT
+    })
+
+    it('destribute COT, ETH, and TST token', async function() {
+      // transfer COT token to DAO wallet
+      await this.cot.transfer(this.daoWallet.address, 999)
+      // transfer test token to DAO wallet
+      await this.testToken.transfer(this.daoWallet.address, 999)
+      // transfer ETH to DAO wallet
+      // transfer from user two for correct calcualte owner wei
+      await this.daoWallet.sendTransaction({
+        value: 999,
+        from: userTwo
+      });
+
+      // Owner balance before destribute
+      const ownerBalanceTSTBefore = await this.testToken.balanceOf(userOne)
+      const ownerBalanceCOTBefore = await this.cot.balanceOf(userOne)
+      const ownerBalanceETHBefore = await web3.eth.getBalance(userOne)
+
+      const burnAddress = await this.daoWallet.deadAddress()
+
+      // destribute
+      // NOTE: any user can execude destribute
+      await this.daoWallet.destribute(
+         [this.cot.address,
+         this.testToken.address,
+         this.ETH_TOKEN_ADDRESS], {from:userTwo})
+
+      // check stake and burn address
+      const stakeBalanceAfter = await this.cot.balanceOf(this.stake.address)
+      const burnBalanceAfter = await this.cot.balanceOf(burnAddress)
+
+      // calculate stake and burn
+      // 1/3 COT = 333, 1/3 ETH = 999 COT, 1/3 TST = 999 COT
+      assert.equal(stakeBalanceAfter, 333+999+999)
+      assert.equal(burnBalanceAfter, 333+999+999)
+
+      // check owner balance after distribute
+      const ownerBalanceTSTAfter = await this.testToken.balanceOf(userOne)
+      const ownerBalanceCOTAfter = await this.cot.balanceOf(userOne)
+      const ownerBalanceETHAfter = await web3.eth.getBalance(userOne)
+
+      const ownerTSTEarn = ownerBalanceTSTAfter - ownerBalanceTSTBefore
+      const ownerCOTEarn = ownerBalanceCOTAfter - ownerBalanceCOTBefore
+      const ownerETHEarn = ownerBalanceETHAfter - ownerBalanceETHBefore
+
+      // calculate owner earn (for owner we not convert assets to COT)
+      // TST
+      assert.equal(ownerTSTEarn, 333)
+      // COT
+      assert.equal(ownerCOTEarn, 333)
+      // ETH
+      assert.isTrue(ownerBalanceETHAfter > ownerBalanceETHBefore)
+
+      // DAO wallet balance should be 0 after distribute
+      const DAOCOTBalance = await this.cot.balanceOf(this.daoWallet.address)
+      const DAOTSTBalance = await this.testToken.balanceOf(this.daoWallet.address)
+      const DAOETHBalance = await await web3.eth.getBalance(this.daoWallet.address)
+
+      assert.equal(DAOCOTBalance, 0)
+      assert.equal(DAOTSTBalance, 0)
+      assert.equal(DAOETHBalance, 0)
     })
 
     // Vote

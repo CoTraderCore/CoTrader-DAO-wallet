@@ -47,12 +47,14 @@ contract ConvertPortal {
   view
   returns(uint256)
   {
+    // wrap Bancor ETH token
+    address fromToken = _token == ETH_TOKEN_ADDRESS ? BancorEtherToken : _token;
     // check if can get ratio
     (bool success) = address(bancorRatio).call(
-    abi.encodeWithSelector(bancorRatio.getRatio.selector, _token, cotToken, _amount));
-    // get ratio from DEX with COT
+    abi.encodeWithSelector(bancorRatio.getRatio.selector, fromToken, cotToken, _amount));
+    // get ratio from Bancor DEX with COT
     if(success){
-      return bancorRatio.getRatio(_token, cotToken, _amount);
+      return bancorRatio.getRatio(fromToken, cotToken, _amount);
     }else{
       return 0;
     }
