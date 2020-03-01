@@ -1,8 +1,3 @@
-# status
-```
-Not finished
-```
-
 # description
 ```
 This contract get 10% from CoTrader managers profit
