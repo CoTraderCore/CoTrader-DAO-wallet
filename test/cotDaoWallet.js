@@ -114,6 +114,25 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal(parseInt(fromWei(String(burnBalance)), 10), 50)
     })
 
+    it('Owner get 25% COT, stake get 25% COT, burn address get 50% COT after destribute not equal amount', async function() {
+      await this.cot.transfer(this.daoWallet.address, toWei(String(99)))
+      // balance before destribute
+      const ownerBalanceBefore = await this.cot.balanceOf(userOne)
+      await this.daoWallet.destribute([this.cot.address])
+      // balance after destribute
+      const ownerBalanceAfter = await this.cot.balanceOf(userOne)
+
+      const burnAddress = await this.daoWallet.deadAddress()
+      const stakeBalance = await this.cot.balanceOf(this.stake.address)
+      const burnBalance = await this.cot.balanceOf(burnAddress)
+
+      const ownerEarn = ownerBalanceAfter - ownerBalanceBefore
+
+      assert.equal(parseInt(fromWei(String(ownerEarn)), 10), 24)
+      assert.equal(parseInt(fromWei(String(stakeBalance)), 10), 24)
+      assert.equal(parseInt(fromWei(String(burnBalance)), 10), 49)
+    })
+
     it('Owner get 25% ETH, stake get 25% COT from ETH, burn address get 50% COT from ETH after destribute', async function() {
       const ownerBalanceBefore = await web3.eth.getBalance(userOne)
 
