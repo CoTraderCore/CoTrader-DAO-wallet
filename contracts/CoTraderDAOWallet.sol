@@ -1,9 +1,9 @@
 /**
 * This contract get 10% from CoTrader managers profit and then distributes assets
 *
-* 1/3 to owner of this contract (CoTrtader team)
-* 1/3 convert to COT and burn
-* 1/3 convert to COT and send to stake reserve
+* 50% convert to COT and burn
+* 25% convert to COT and send to stake reserve
+* 25% to owner of this contract (CoTrtader team)
 *
 * NOTE: 51% CoTrader token holders can change owner of this contract
 */
@@ -53,29 +53,30 @@ contract CoTraderDAOWallet is Ownable{
   }
 
   function _withdraw(ERC20 _token, uint256 _amount) private {
-    if(_token == ETH_TOKEN_ADDRESS){
-      address(owner).transfer(_amount);
-    }else{
-      _token.transfer(owner, _amount);
-    }
+    if(_amount > 0)
+      if(_token == ETH_TOKEN_ADDRESS){
+        address(owner).transfer(_amount);
+      }else{
+        _token.transfer(owner, _amount);
+      }
   }
 
   // allow any user call destribute 1/3 stake, 1/3 burn and 1/3 to owner
   function destribute(ERC20[] tokens) {
    for(uint i = 0; i < tokens.length; i++){
-     // get current token balance
-     uint256 curentTokenTotalBalance = getTokenBalance(tokens[i]);
-     // get a third of the balance
-     uint256 thirdOfBalance = curentTokenTotalBalance.div(3);
-     // continue if cur balance can be div by 3
-     if(thirdOfBalance > 0){
-        // 1/3 to owner address
-        _withdraw(tokens[i], thirdOfBalance);
-        // 1/3 burn
-        _stake(tokens[i], thirdOfBalance);
-        // 1/3 stake
-        _burn(tokens[i], thirdOfBalance);
-      }
+      // get current token balance
+      uint256 curentTokenTotalBalance = getTokenBalance(tokens[i]);
+      // get 50% of balance
+      uint256 burnAmount = curentTokenTotalBalance.div(2);
+      // get 25% of balance
+      uint256 stakeAndWithdrawAmount = burnAmount.div(2);
+
+      // 50 burn
+      _burn(tokens[i], burnAmount);
+      // 25% stake
+      _stake(tokens[i], stakeAndWithdrawAmount);
+      // 25% to owner address
+      _withdraw(tokens[i], stakeAndWithdrawAmount);
     }
   }
 
