@@ -3,7 +3,7 @@
 *
 * 50% convert to COT and burn
 * 25% convert to COT and send to stake reserve
-* 25% to owner of this contract (CoTrtader team)
+* 25% to owner of this contract (CoTrader team)
 *
 * NOTE: 51% CoTrader token holders can change owner of this contract
 */
@@ -22,17 +22,23 @@ contract CoTraderDAOWallet is Ownable{
   IConvertPortal public convertPortal;
   mapping(address => address) public candidatesMap;
   ERC20 constant private ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-
   address public deadAddress = address(0x000000000000000000000000000000000000dEaD);
-
   IStake public stake;
 
+  /**
+  * @dev contructor
+  *
+  * @param _COT                           address of CoTrader ERC20
+  * @param _stake                         address of Stake contract
+  * @param _convertPortal                 address of exchange contract
+  */
   constructor(address _COT, address _stake, address _convertPortal) public {
     COT = ERC20(_COT);
     stake = IStake(_stake);
     convertPortal = IConvertPortal(_convertPortal);
   }
 
+  // send assets to burn address
   function _burn(ERC20 _token, uint256 _amount) private {
     uint256 cotAmount = (_token == COT)
     ? _amount
@@ -41,6 +47,7 @@ contract CoTraderDAOWallet is Ownable{
       COT.transfer(deadAddress, cotAmount);
   }
 
+  // send assets to stake contract
   function _stake(ERC20 _token, uint256 _amount) private {
     uint256 cotAmount = (_token == COT)
     ? _amount
@@ -52,6 +59,7 @@ contract CoTraderDAOWallet is Ownable{
     }
   }
 
+  // send assets to owner
   function _withdraw(ERC20 _token, uint256 _amount) private {
     if(_amount > 0)
       if(_token == ETH_TOKEN_ADDRESS){
@@ -61,7 +69,7 @@ contract CoTraderDAOWallet is Ownable{
       }
   }
 
-  // allow any user call destribute 1/3 stake, 1/3 burn and 1/3 to owner
+  // allow any user call destribute
   function destribute(ERC20[] tokens) {
    for(uint i = 0; i < tokens.length; i++){
       // get current token balance
@@ -80,6 +88,7 @@ contract CoTraderDAOWallet is Ownable{
     }
   }
 
+  // return balance of ERC20 or ETH for this contract
   function getTokenBalance(ERC20 _token) public view returns(uint256){
     if(_token == ETH_TOKEN_ADDRESS){
       return address(this).balance;
@@ -88,13 +97,13 @@ contract CoTraderDAOWallet is Ownable{
     }
   }
 
-  // for case if contract get some token,
+  // for case if contract receive some token,
   // which can't be converted to COT directly or to COT via ETH
   function withdrawNonConvertibleERC(ERC20 _token, uint256 _amount) public onlyOwner{
     uint256 cotReturnAmount = convertPortal.isConvertibleToCOT(_token, _amount);
     uint256 ethReturnAmount = convertPortal.isConvertibleToETH(_token, _amount);
 
-    require(_token != ETH_TOKEN_ADDRESS, "token con not be a ETH");
+    require(_token != ETH_TOKEN_ADDRESS, "token can not be a ETH");
     require(cotReturnAmount == 0, "token can not be converted to COT");
     require(ethReturnAmount == 0, "token can not be converted to ETH");
 
@@ -131,6 +140,7 @@ contract CoTraderDAOWallet is Ownable{
     }
   }
 
+  // owner can change version of exchange portal contract
   function changeConvertPortal(address _newConvertPortal)
   public
   onlyOwner
@@ -177,11 +187,12 @@ contract CoTraderDAOWallet is Ownable{
     return count;
   }
 
+  // Any user can change owner if this user address have 51% voters
   function changeOwner(address _newOwner) public {
-    uint256 totalVoters = calculateVoters(_newOwner);
+    uint256 totalVotersBalance = calculateVoters(_newOwner);
     uint256 totalCOT = calculateCOTSupply();
     // require 51% COT on voters balance
-    require(totalVoters > totalCOT);
+    require(totalVotersBalance > totalCOT);
     super._transferOwnership(_newOwner);
   }
 

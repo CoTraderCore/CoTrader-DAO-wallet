@@ -270,6 +270,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
     })
 
     it('User can change owner if there are 51% COT supply', async function() {
+      assert.equal(await await this.daoWallet.owner(), userOne)
       // transfer 50% tokens to userTwo
       const totalSupply = await this.cot.totalSupply()
       const halfSupply = fromWei(String(totalSupply)) / 2
@@ -287,6 +288,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
 
       // execude change owner
       await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.fulfilled
+      assert.equal(await await this.daoWallet.owner(), userTwo)
     })
 
     it('new owner get 25% after destribute', async function() {
