@@ -178,6 +178,13 @@ contract CoTraderDAOWallet is Ownable{
     convertPortal = IConvertPortal(_newConvertPortal);
   }
 
+  // any user can donate to stake reserve from msg.sender balance
+  function addStakeReserveFromSender(uint256 _amount) public {
+    require(COT.transferFrom(msg.sender, address(this), _amount));
+    COT.approve(address(stake), _amount);
+    stake.addReserve(_amount);
+  }
+
 
   /*
   ** VOTE LOGIC
