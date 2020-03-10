@@ -17,14 +17,23 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract CoTraderDAOWallet is Ownable{
   using SafeMath for uint256;
+  // COT address
   ERC20 public COT;
-  address[] public voters;
+  // exchange portal for convert tokens to COT
   IConvertPortal public convertPortal;
-  mapping(address => address) public candidatesMap;
-  mapping(address => bool) public votersMap;
-  ERC20 constant private ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-  address public deadAddress = address(0x000000000000000000000000000000000000dEaD);
+  // stake contract
   IStake public stake;
+  // array of voters
+  address[] public voters;
+  // voter => candidate
+  mapping(address => address) public candidatesMap;
+  // voter => register status
+  mapping(address => bool) public votersMap;
+  // this contract recognize ETH by this address
+  ERC20 constant private ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
+  // burn address
+  address public deadAddress = address(0x000000000000000000000000000000000000dEaD);
+
 
   /**
   * @dev contructor
@@ -70,7 +79,11 @@ contract CoTraderDAOWallet is Ownable{
       }
   }
 
-  // allow any user call destribute
+  /**
+  * @dev destribute assest from this contract to stake, burn, and owner of this contract
+  *
+  * @param tokens                          array of token addresses for destribute
+  */
   function destribute(ERC20[] tokens) {
    for(uint i = 0; i < tokens.length; i++){
       // get current token balance
@@ -98,9 +111,15 @@ contract CoTraderDAOWallet is Ownable{
     }
   }
 
-  // for case if contract receive some token,
-  // which can't be converted to COT directly or to COT via ETH
-  function withdrawNonConvertibleERC(ERC20 _token, uint256 _amount) public onlyOwner{
+  /**
+  * @dev Owner can withdraw non convertible token if this token,
+  * can't be converted to COT directly or to COT via ETH
+  *
+  *
+  * @param _token                          address of token
+  * @param _amount                         amount of token
+  */
+  function withdrawNonConvertibleERC(ERC20 _token, uint256 _amount) public onlyOwner {
     uint256 cotReturnAmount = convertPortal.isConvertibleToCOT(_token, _amount);
     uint256 ethReturnAmount = convertPortal.isConvertibleToETH(_token, _amount);
 
@@ -111,7 +130,17 @@ contract CoTraderDAOWallet is Ownable{
     _token.transfer(owner, _amount);
   }
 
-  // convert token to COT
+
+  /**
+  * @dev this function try convert token to COT via DEXs which has COT in circulation
+  * if there are no such pair on this COT supporting DEXs, function try convert to COT on another DEXs
+  * via convert ERC20 input to ETH, and then ETH to COT on COT supporting DEXs.
+  * If such a conversion is not possible return 0 for cotAmount
+  *
+  *
+  * @param _token                          address of token
+  * @param _amount                         amount of token
+  */
   function convertTokenToCOT(address _token, uint256 _amount)
   private
   returns(uint256 cotAmount)
@@ -153,11 +182,12 @@ contract CoTraderDAOWallet is Ownable{
   /*
   ** VOTE LOGIC
   *
-  *  users can change owner if total balance of COT for all users more than 50%
-  *  of total supply COT
+  *  users can change owner if total COT balance of all voters for a certain candidate
+  *  more than 50% of COT total supply
+  *
   */
 
-  // register a new wallet for a vote
+  // register a new vote wallet
   function voterRegister() public {
     // not allow register the same wallet twice
     require(!votersMap[msg.sender]);
@@ -166,25 +196,25 @@ contract CoTraderDAOWallet is Ownable{
     votersMap[msg.sender] = true;
   }
 
-  // vote for a certain candidate address 
+  // vote for a certain candidate address
   function vote(address _candidate) public {
     candidatesMap[msg.sender] = _candidate;
   }
 
   // return half of (total supply - burned balance)
-  function calculateCOTSupply() public view returns(uint256){
+  function calculateCOTHalfSupply() public view returns(uint256){
     uint256 supply = COT.totalSupply();
     uint256 burned = COT.balanceOf(deadAddress);
     return supply.sub(burned).div(2);
   }
 
-  // calculate all vote subscribers
-  // return balance of COT for all voters of current candidate
+  // calculate all vote subscribers for a certain candidate
+  // return balance of COT of all voters of a certain candidate
   function calculateVoters(address _candidate)public view returns(uint256){
     uint256 count;
     for(uint i = 0; i<voters.length; i++){
-      // take into account current vote balance
-      // if this vote compare with current candidate
+      // take into account current voter balance
+      // if this user voted for current candidate
       if(_candidate == candidatesMap[voters[i]]){
           count = count.add(COT.balanceOf(voters[i]));
       }
@@ -192,12 +222,16 @@ contract CoTraderDAOWallet is Ownable{
     return count;
   }
 
-  // Any user can change owner if this user address have 51% voters
+  // Any user can change owner with a certain candidate
+  // if this candidate address have 51% voters
   function changeOwner(address _newOwner) public {
+    // get vote data
     uint256 totalVotersBalance = calculateVoters(_newOwner);
-    uint256 totalCOT = calculateCOTSupply();
+    // get half of COT supply in market circulation
+    uint256 totalCOT = calculateCOTHalfSupply();
     // require 51% COT on voters balance
     require(totalVotersBalance > totalCOT);
+    // change owner
     super._transferOwnership(_newOwner);
   }
 
