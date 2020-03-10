@@ -54,7 +54,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       this.convertPortal.address)
   })
 
-  describe('Tokens', function() {
+  describe('INIT', function() {
     it('Correct init CoTrader token', async function() {
       const name = await this.cot.name()
       const symbol = await this.cot.symbol()
@@ -74,9 +74,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal("TST", symbol)
       assert.equal(18, decimals)
     })
-  })
 
-  describe('Stake', function() {
     it('Correct init stake', async function() {
       const reserve = await this.stake.reserve()
       assert.equal(0, reserve)
@@ -85,6 +83,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal(this.cot.address, token)
     })
   })
+
 
   describe('Wallet', function() {
     it('Correct init wallet', async function() {
@@ -243,13 +242,23 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal(DAOTSTBalance, 0)
       assert.equal(DAOETHBalance, 0)
     })
+  })
 
-    // Vote
+
+  describe('Vote', function() {
+    it('User can not register the same wallet address for vote twice', async function() {
+      await this.daoWallet.voterRegister({from: userOne}).should.be.fulfilled
+      await this.daoWallet.voterRegister({from: userOne}).should.be.rejectedWith(EVMRevert)
+    })
+
+
     it('User can not change owner if there are no 51% COT supply', async function() {
+      await this.daoWallet.voterRegister({from: userTwo})
+      await this.daoWallet.vote(userTwo, {from: userTwo})
       await this.daoWallet.changeOwner(userTwo).should.be.rejectedWith(EVMRevert)
     })
 
-    it('User can not change owner if vote, but then transfer balance', async function() {
+    it('User can not change owner if user vote, but then transfer balance', async function() {
       await this.daoWallet.voterRegister({from: userOne})
       await this.daoWallet.vote(userTwo, {from: userOne})
       const userOneBalance = await this.cot.balanceOf(userOne)

@@ -21,6 +21,7 @@ contract CoTraderDAOWallet is Ownable{
   address[] public voters;
   IConvertPortal public convertPortal;
   mapping(address => address) public candidatesMap;
+  mapping(address => bool) public votersMap;
   ERC20 constant private ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
   address public deadAddress = address(0x000000000000000000000000000000000000dEaD);
   IStake public stake;
@@ -158,10 +159,14 @@ contract CoTraderDAOWallet is Ownable{
 
   // register a new wallet for a vote
   function voterRegister() public {
+    // not allow register the same wallet twice
+    require(!votersMap[msg.sender]);
+    // register
     voters.push(msg.sender);
+    votersMap[msg.sender] = true;
   }
 
-  // vote for a certain candidate
+  // vote for a certain candidate address 
   function vote(address _candidate) public {
     candidatesMap[msg.sender] = _candidate;
   }
