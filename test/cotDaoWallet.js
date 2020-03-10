@@ -269,19 +269,23 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.rejectedWith(EVMRevert)
     })
 
-    it('User can change owner if there are 51% COT supply', async function() {
+    it('User can change owner if there are 51% of COT supply', async function() {
       assert.equal(await await this.daoWallet.owner(), userOne)
       // transfer 50% tokens to userTwo
       const totalSupply = await this.cot.totalSupply()
       const halfSupply = fromWei(String(totalSupply)) / 2
       await this.cot.transfer(userTwo, toWei(String(halfSupply)))
 
-      // transfer 1 wei to userThree for make 51%
-      await this.cot.transfer(userTwo, 1)
-
       // vote from user two
       await this.daoWallet.voterRegister({from: userTwo})
       await this.daoWallet.vote(userTwo, {from: userTwo})
+
+      // execude change owner
+      // should fails because there are no 51%
+      await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.rejectedWith(EVMRevert)
+
+      // transfer 1 wei to userThree for make 51%
+      await this.cot.transfer(userThree, 1)
       // vote from user three
       await this.daoWallet.voterRegister({from: userThree})
       await this.daoWallet.vote(userTwo, {from: userThree})
