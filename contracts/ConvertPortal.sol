@@ -19,11 +19,11 @@ contract ConvertPortal {
   /**
   * @dev contructor
   *
-  * @param _bancorRegistryWrapper  address of Bancor Registry Wrapper
-  * @param _BancorEtherToken       address of Bancor ETH wrapper
-  * @param _kyber                  address of KyberNetwork
-  * @param _cotToken               address of CoTrader erc20
-  * @param _bancorRatio            address of Bancor ratio contract
+  * @param _bancorRegistryWrapper  address of CoTrader Bancor Registry Wrapper contract 
+  * @param _BancorEtherToken       address of Bancor ETH wrapper contract
+  * @param _kyber                  address of KyberNetworkProxy contract
+  * @param _cotToken               address of CoTrader erc20 contract
+  * @param _bancorRatio            address of CoTrader Bancor ratio contract
   */
   constructor(
     address _bancorRegistryWrapper,

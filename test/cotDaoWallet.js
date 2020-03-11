@@ -258,6 +258,9 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       await this.daoWallet.voterRegister({from: userOne}).should.be.rejectedWith(EVMRevert)
     })
 
+    it('User can not vote from non register wallet', async function() {
+      await this.daoWallet.vote(userTwo, {from: userTwo}).should.be.rejectedWith(EVMRevert)
+    })
 
     it('User can not change owner if there are no 51% COT supply', async function() {
       await this.daoWallet.voterRegister({from: userTwo})
@@ -265,12 +268,16 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       await this.daoWallet.changeOwner(userTwo).should.be.rejectedWith(EVMRevert)
     })
 
-    it('User can not change owner if user vote, but then transfer balance', async function() {
+    it('User can not change owner if 51% user holder vote, but then transfer balance', async function() {
       await this.daoWallet.voterRegister({from: userOne})
       await this.daoWallet.vote(userTwo, {from: userOne})
+      // make sure userOne hold more then 50% COT
+      assert.isTrue(await this.cot.balanceOf(userOne) > await this.daoWallet.calculateCOTHalfSupply())
+      // transfer all balance
       const userOneBalance = await this.cot.balanceOf(userOne)
-      await this.cot.transfer(userTwo, userOneBalance)
-      await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.rejectedWith(EVMRevert)
+      await this.cot.transfer(userThree, userOneBalance)
+
+      await this.daoWallet.changeOwner(userTwo, {from: userOne}).should.be.rejectedWith(EVMRevert)
     })
 
     it('User can not change owner if there are only 50% COT supply', async function() {
@@ -279,10 +286,13 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       const halfSupply = fromWei(String(totalSupply)) / 2
       await this.cot.transfer(userThree, toWei(String(halfSupply)))
 
+      // make sure userThree hold 50% COT
+      assert.equal(fromWei(await this.cot.balanceOf(userThree)), fromWei(await this.daoWallet.calculateCOTHalfSupply()))
+
       // vote from userThree with 50% balance
       await this.daoWallet.voterRegister({from: userThree})
       await this.daoWallet.vote(userTwo, {from: userThree})
-      await this.daoWallet.changeOwner(userTwo, {from: userTwo}).should.be.rejectedWith(EVMRevert)
+      await this.daoWallet.changeOwner(userTwo, {from: userThree}).should.be.rejectedWith(EVMRevert)
     })
 
     it('User can change owner if there are 51% of COT supply', async function() {
@@ -339,8 +349,10 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
     })
 
     it('Owner can call withdrawNonConvertibleERC and get this ERC if this ERC non convertible', async function() {
+      // disallow convert tst token to cor or eth
       await this.convertPortal.disallowConvertToCOT()
       await this.convertPortal.disallowConvertToETH()
+
       const tstSupply = await this.testToken.totalSupply()
       // transfer ALL TST tokens to DAO wallet
       await this.testToken.transfer(this.daoWallet.address, tstSupply)

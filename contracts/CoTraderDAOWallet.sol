@@ -196,15 +196,16 @@ contract CoTraderDAOWallet is Ownable{
 
   // register a new vote wallet
   function voterRegister() public {
-    // not allow register the same wallet twice
-    require(!votersMap[msg.sender]);
-    // register
+    require(!votersMap[msg.sender], "not allowed register the same wallet twice");
+    // register a new wallet
     voters.push(msg.sender);
     votersMap[msg.sender] = true;
   }
 
   // vote for a certain candidate address
   function vote(address _candidate) public {
+    require(votersMap[msg.sender], "wallet must be registered to vote");
+    // vote for a certain candidate
     candidatesMap[msg.sender] = _candidate;
   }
 
