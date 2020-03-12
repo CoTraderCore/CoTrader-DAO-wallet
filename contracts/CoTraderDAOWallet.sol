@@ -88,17 +88,19 @@ contract CoTraderDAOWallet is Ownable{
    for(uint i = 0; i < tokens.length; i++){
       // get current token balance
       uint256 curentTokenTotalBalance = getTokenBalance(tokens[i]);
-      // get 50% of balance
+      // get 50% of balance for burn
       uint256 burnAmount = curentTokenTotalBalance.div(2);
-      // get 25% of balance
-      uint256 stakeAndWithdrawAmount = burnAmount.div(2);
+      // get 10% of balance
+      uint256 stakeAmount = burnAmount.div(5);
+      // get 40% of balance
+      uint256 managerAmount = stakeAmount.mul(4);
 
-      // 50 burn
+      // 50% burn
       _burn(tokens[i], burnAmount);
-      // 25% stake
-      _stake(tokens[i], stakeAndWithdrawAmount);
-      // 25% to owner address
-      _withdraw(tokens[i], stakeAndWithdrawAmount);
+      // 10% stake
+      _stake(tokens[i], stakeAmount);
+      // 40% to owner address
+      _withdraw(tokens[i], managerAmount);
     }
   }
 

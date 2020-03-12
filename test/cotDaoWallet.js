@@ -94,45 +94,41 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal(userOne, owner)
     })
 
-    it('Owner get 25% COT, stake get 25% COT, burn address get 50% COT after destribute', async function() {
+    it('Owner get 40% COT, stake get 10% COT, burn address get 50% COT after destribute', async function() {
       await this.cot.transfer(this.daoWallet.address, toWei(String(100)))
-      // balance before destribute
-      const ownerBalanceBefore = await this.cot.balanceOf(userOne)
+      const ownerBalance = await this.cot.balanceOf(userOne)
+      // transfer all COT to user two for correct calculation userOne cot balance
+      await this.cot.transfer(userTwo, ownerBalance)
+
       await this.daoWallet.destribute([this.cot.address])
-      // balance after destribute
-      const ownerBalanceAfter = await this.cot.balanceOf(userOne)
-
       const burnAddress = await this.daoWallet.deadAddress()
-      const stakeBalance = await this.cot.balanceOf(this.stake.address)
-      const burnBalance = await this.cot.balanceOf(burnAddress)
 
-      const ownerEarn = ownerBalanceAfter - ownerBalanceBefore
+      assert.equal(await this.cot.balanceOf(userOne), toWei(String(40)))
+      assert.equal(await this.cot.balanceOf(this.stake.address), toWei(String(10)))
+      assert.equal(await this.cot.balanceOf(burnAddress), toWei(String(50)))
 
-      assert.equal(parseInt(fromWei(String(ownerEarn)), 10), 25)
-      assert.equal(parseInt(fromWei(String(stakeBalance)), 10), 25)
-      assert.equal(parseInt(fromWei(String(burnBalance)), 10), 50)
+      assert.equal(await this.cot.balanceOf(this.daoWallet.address), 0)
     })
 
-    it('Owner get 25% COT, stake get 25% COT, burn address get 50% COT after destribute not equal amount', async function() {
+    it('Owner get 40% COT, stake get 10% COT, burn address get 50% COT after destribute not equal amount', async function() {
       await this.cot.transfer(this.daoWallet.address, toWei(String(99)))
-      // balance before destribute
-      const ownerBalanceBefore = await this.cot.balanceOf(userOne)
+      const ownerBalance = await this.cot.balanceOf(userOne)
+      // transfer all COT to user two for correct calculation userOne cot balance
+      await this.cot.transfer(userTwo, ownerBalance)
+
       await this.daoWallet.destribute([this.cot.address])
-      // balance after destribute
-      const ownerBalanceAfter = await this.cot.balanceOf(userOne)
 
       const burnAddress = await this.daoWallet.deadAddress()
-      const stakeBalance = await this.cot.balanceOf(this.stake.address)
-      const burnBalance = await this.cot.balanceOf(burnAddress)
 
-      const ownerEarn = ownerBalanceAfter - ownerBalanceBefore
 
-      assert.equal(parseInt(fromWei(String(ownerEarn)), 10), 24)
-      assert.equal(parseInt(fromWei(String(stakeBalance)), 10), 24)
-      assert.equal(parseInt(fromWei(String(burnBalance)), 10), 49)
+      assert.equal(await this.cot.balanceOf(userOne), toWei(String(39.6)))
+      assert.equal(await this.cot.balanceOf(this.stake.address), toWei(String(9.9)))
+      assert.equal(await this.cot.balanceOf(burnAddress), toWei(String(49.5)))
+
+      assert.equal(await this.cot.balanceOf(this.daoWallet.address), 0)
     })
 
-    it('Owner get 25% ETH, stake get 25% COT from ETH, burn address get 50% COT from ETH after destribute', async function() {
+    it('Owner get 40% ETH, stake get 10% COT from ETH, burn address get 50% COT from ETH after destribute', async function() {
       const ownerBalanceBefore = await web3.eth.getBalance(userOne)
 
       // send ETH to DAO wallet from userTwo
@@ -151,33 +147,31 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
 
       const ownerBalanceAfter = await web3.eth.getBalance(userOne)
 
-      // owner get 25% ETH
-      assert.equal(fromWei(String(ownerBalanceAfter)) - fromWei(String(ownerBalanceBefore)), 2.5)
-      // stake get 25% ETH in COT (1 ETH = 3 COT)
-      assert.equal(fromWei(await this.cot.balanceOf(this.stake.address)), 2.5 * 3)
+      // owner get 40% ETH
+      assert.equal(fromWei(String(ownerBalanceAfter)) - fromWei(String(ownerBalanceBefore)), 4)
+      // stake get 10% ETH in COT (1 ETH = 3 COT)
+      assert.equal(fromWei(await this.cot.balanceOf(this.stake.address)), 1 * 3)
 
       const burnAddress = await this.daoWallet.deadAddress()
-      // burn get 50% ETH in COT
+      // burn get 50% ETH in COT (1 ETH = 3 COT)
       assert.equal(fromWei(await this.cot.balanceOf(burnAddress)), 5 * 3)
+
+      assert.equal(await web3.eth.getBalance(this.daoWallet.address), 0)
     })
 
-    it('Owner get 25% TST, stake get 25% COT from TST and burn address get 50% COT from TST after destribute', async function() {
-      await this.testToken.transfer(this.daoWallet.address, toWei(String(500)))
-      // balance before destribute
-      const ownerBalanceBefore = await this.testToken.balanceOf(userOne)
+    it('Owner get 40% TST, stake get 10% COT from TST and burn address get 50% COT from TST after destribute', async function() {
+      await this.testToken.transfer(this.daoWallet.address, toWei(String(100)))
+      // transfer all tst to userTwo for correct calculation for userOne
+      const ownerBalance = await this.testToken.balanceOf(userOne)
+      this.testToken.transfer(userTwo, ownerBalance)
+
       await this.daoWallet.destribute([this.testToken.address])
-      // balance after destribute
-      const ownerBalanceAfter = await this.testToken.balanceOf(userOne)
 
       const burnAddress = await this.daoWallet.deadAddress()
-      const stakeBalance = await this.cot.balanceOf(this.stake.address)
-      const burnBalance = await this.cot.balanceOf(burnAddress)
 
-      const ownerEarn = ownerBalanceAfter - ownerBalanceBefore
-
-      assert.equal(parseInt(fromWei(String(ownerEarn)), 10), 125)
-      assert.equal(parseInt(fromWei(String(stakeBalance)), 10), 125 * 3) // 1 TST = 3 COT
-      assert.equal(parseInt(fromWei(String(burnBalance)) ,10), 250 * 3) // 1 TST = 3 COT
+      assert.equal(await this.testToken.balanceOf(userOne), toWei(String(40)))
+      assert.equal(await this.cot.balanceOf(this.stake.address), toWei(String(10 * 3))) // 1 TST = 3 COT
+      assert.equal(await this.cot.balanceOf(burnAddress), toWei(String(50 * 3))) // 1 TST = 3 COT
     })
 
     it('destribute COT, ETH, and TST token', async function() {
@@ -211,10 +205,10 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       const burnBalanceAfter = await this.cot.balanceOf(burnAddress)
 
       // calculate stake and burn
-      // 25% COT = 2.5, 25% ETH = 2.5 * 3, 25% TST = 2.5 * 3
-      assert.equal(fromWei(String(stakeBalanceAfter)), 2.5+7.5+7.5)
-      // 50% COT = 5, 50% ETH = 5 * 3, 50% TST = 5 * 3
-      assert.equal(fromWei(String(burnBalanceAfter)), 5+5*3+5*3)
+      // 10% COT = 1, 10% ETH in COT = 1 * 3, 10% TST in COT = 1 * 3
+      assert.equal(fromWei(String(stakeBalanceAfter)), 1+3+3)
+      // 50% COT = 5, 50% ETH in COT = 5 * 3, 50% TST in COT = 5 * 3
+      assert.equal(fromWei(String(burnBalanceAfter)), 5+15+15)
 
       // check owner balance after distribute
       const ownerBalanceTSTAfter = await this.testToken.balanceOf(userOne)
@@ -227,9 +221,9 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
 
       // calculate owner earn (for owner we not convert assets to COT)
       // TST
-      assert.equal(Number(fromWei(String(ownerTSTEarn))).toFixed(8), 2.5)
+      assert.equal(Number(fromWei(String(ownerTSTEarn))).toFixed(8), 4)
       // COT
-      assert.equal(Number(fromWei(String(ownerCOTEarn))).toFixed(8), 2.5)
+      assert.equal(Number(fromWei(String(ownerCOTEarn))).toFixed(8), 4)
       // ETH
       assert.isTrue(ownerBalanceETHAfter > ownerBalanceETHBefore)
 
@@ -321,7 +315,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       assert.equal(await await this.daoWallet.owner(), userTwo)
     })
 
-    it('new owner get 25% after destribute', async function() {
+    it('new owner get 40% after destribute', async function() {
       // Change owner
       await this.daoWallet.voterRegister({from: userOne})
       await this.daoWallet.vote(userTwo, {from: userOne})
@@ -338,7 +332,7 @@ contract('CoTraderDAOWallet', function([userOne, userTwo, userThree]) {
       // Balance after
       const newOwnerBalanceAfter = await this.cot.balanceOf(userTwo)
 
-      assert.equal(newOwnerBalanceAfter, 25)
+      assert.equal(newOwnerBalanceAfter, 40)
       assert.isTrue(newOwnerBalanceAfter > newOwnerBalanceBefore)
     })
 
